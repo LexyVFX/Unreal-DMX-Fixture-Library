@@ -41,10 +41,6 @@ class NDIIO_API ANDIReceiveActor : public AActor
 		/** The Receiver object used to get Audio, Video, and Metadata from on the network */
 		UPROPERTY(BlueprintReadWrite, EditInstanceOnly, Category = "NDI IO|Media", META = (DisplayName = "NDI Media Source", AllowPrivateAccess = true))
 		UNDIMediaReceiver* NDIMediaSource = nullptr;
-		
-		/** The component used to display the video received from the Media Sender object */		
-		UPROPERTY(Transient, META = (DisplayName = "Video Mesh Component"))
-		UStaticMeshComponent* VideoMeshComponent = nullptr;
 
 	private:
 		/** The component used to play the audio from the NDI Media source */
@@ -76,6 +72,10 @@ class NDIIO_API ANDIReceiveActor : public AActor
 			Returns the current frame size of the 'VideoMeshComponent' for this object
 		*/
 		const FVector2D GetFrameSize() const;
+
+		/** The component used to display the video received from the Media Sender object */
+		UPROPERTY(EditAnywhere, Transient, META = (DisplayName = "Video Mesh Component"))
+		UStaticMeshComponent* VideoMeshComponent = nullptr;
 
 	private:
 		UFUNCTION(BlueprintSetter)

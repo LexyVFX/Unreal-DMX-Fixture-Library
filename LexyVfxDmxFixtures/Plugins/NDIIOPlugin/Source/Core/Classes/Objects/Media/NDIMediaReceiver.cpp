@@ -11,6 +11,9 @@
 #include <GlobalShader.h>
 #include <ShaderParameterUtils.h>
 #include <MediaShaders.h>
+#include <Materials/MaterialInstanceDynamic.h>
+#include <Async/Async.h>
+#include <GenericPlatform/GenericPlatformProcess.h>
 
 #if WITH_EDITOR
 	#include <Editor.h>
@@ -38,22 +41,26 @@ bool UNDIMediaReceiver::Initialize(const FNDIConnectionInformation& InConnection
 
 		// check if it was successful
 		if (p_receive_instance != nullptr) 
-		{
-			// If the user has added an audio wave to this object, ensure that we register ourselves with
-			// the object
-			if (this->AudioWave != nullptr)
+		{			
+			// If the incoming connection information is valid
+			if (InConnectionInformation.IsValid())
 			{
-				// Register ourselves with the AudioWave object, so that when the engine calls
-				// GeneratePCMData on the audio wave, it can be routed to our implementation
-				AudioWave->SetConnectionSource(this);
+				// ensure that we force the switch on the initial connection
+				bIsInitialConnection = true;
+
+				//// Alright we created a non-connected receiver. Lets actually connect
+				ChangeConnection(InConnectionInformation);
 			}
-			
-			//// Alright we created a non-connected receiver. Lets actually connect
-			ChangeConnection(InConnectionInformation);			
 
 			// We don't want to limit the engine rendering speed to the sync rate of the connection hook 
 			// into the core delegates render thread 'EndFrame'
+			FCoreDelegates::OnEndFrameRT.RemoveAll(this);
 			FCoreDelegates::OnEndFrameRT.AddUObject(this, &UNDIMediaReceiver::CaptureConnectedVideo);
+
+			// We might not want to limit the engine rendering speed, but we definitely don't want to
+			// process frame when we don't have to
+			FCoreDelegates::OnEndFrame.RemoveAll(this);
+			FCoreDelegates::OnEndFrame.AddUObject(this, &UNDIMediaReceiver::UpdateTimecode);
 
 			#if UE_EDITOR
 
@@ -74,7 +81,6 @@ bool UNDIMediaReceiver::Initialize(const FNDIConnectionInformation& InConnection
 
 			return true;
 		}
-
 	}
 
 	return false;
@@ -86,62 +92,110 @@ bool UNDIMediaReceiver::Initialize(const FNDIConnectionInformation& InConnection
 void UNDIMediaReceiver::ChangeConnection(const FNDIConnectionInformation& InConnectionInformation)
 {
 	// Ensure some thread-safety because our 'Capture Connected Video' function is called on the render thread
-	FScopeLock Lock(&RenderSyncContext);
+	FScopeLock AudioLock(&AudioSyncContext);
+	FScopeLock RenderLock(&RenderSyncContext);
 
+	// We should only worry about connections that are already created
 	if (p_receive_instance != nullptr)
 	{
-		// Ensure that the connection information is valid
-		if (InConnectionInformation.IsValid())
+		// Lock the Connection SyncContext for offline updates
+		FScopeLock ConnectionLock(&ConnectionSyncContext);
+
+		// Make sure to add our connection information to the ConnectionQueue
+		ConnectionQueue.Add(InConnectionInformation);
+
+		// If we are not trying to connect to a new queue item already
+		if (!bIsConnectingToQueueItem)
 		{
-			// Do the implicit conversion on the connection information
-			NDIlib_source_t connection;
-			connection.p_url_address = TCHAR_TO_UTF8(*InConnectionInformation.Url);
-			connection.p_ndi_name = TCHAR_TO_UTF8(*InConnectionInformation.SourceName);
+			// ensure we don't re-enter this code
+			bIsConnectingToQueueItem = true;
 
-			// connect to the source 		
-			NDIlib_recv_connect(p_receive_instance, &connection);
+			AsyncTask(ENamedThreads::AnyBackgroundHiPriTask, [&] {
 
-			// Copy the InConnection structure to our ConnectionInformation
-			this->ConnectionInformation = InConnectionInformation;
+				while (ConnectionQueue.Num() > 0)
+				{
+					// Get the New Connection in queue (and empty)
+					auto Connection = GetNextConnectionInQueue();
+
+					if (ConnectionInformation != Connection)
+					{
+						if (Connection.IsValid())
+						{
+							// create a non-connected receiver instance
+							NDIlib_recv_create_v3_t settings;
+							settings.allow_video_fields = false;
+							settings.bandwidth = NDIlib_recv_bandwidth_highest;
+							settings.color_format = NDIlib_recv_color_format_e_BGRX_BGRA;
+
+							// Do the implicit conversion on the connection information
+							NDIlib_source_t connection;
+							connection.p_url_address = TCHAR_TO_UTF8(*Connection.Url);
+							connection.p_ndi_name = TCHAR_TO_UTF8(*Connection.SourceName);
+
+							// Create a receiver and connect to the source
+							auto* receive_instance = NDIlib_recv_create_v3(&settings);
+							NDIlib_recv_connect(receive_instance, &connection);
+
+							// Wait for the connection to process
+							FPlatformProcess::Sleep(2.05f);
+
+							// Only change the connection if this is the initial connector or we don't have any other items in the queue
+							if (ConnectionQueue.Num() == 0 || bIsInitialConnection)
+							{
+								// Ensure some thread-safety because our 'Capture Connected Video' function is called on the render thread
+								FScopeLock AudioLock(&AudioSyncContext);
+								FScopeLock RenderLock(&RenderSyncContext);
+
+								// destroy the previous framesync_instance
+								if (p_framesync_instance != nullptr)
+									NDIlib_framesync_destroy(p_framesync_instance);
+
+								// Free the old receiver
+								NDIlib_recv_destroy(p_receive_instance);
+
+								// set the receiver to the new connection
+								p_receive_instance = receive_instance;
+
+								// Copy the InConnection structure to our ConnectionInformation
+								this->ConnectionInformation = Connection;
+
+								// create a new frame sync instance
+								p_framesync_instance = NDIlib_framesync_create(p_receive_instance);
+
+								// state that the initial connection has been created
+								bIsInitialConnection = false;
+							}
+
+							// Free the temporary receiver
+							else NDIlib_recv_destroy(receive_instance);
+						}
+						else
+						{
+							// Ensure some thread-safety because our 'Capture Connected Video' function is called on the render thread
+							FScopeLock AudioLock(&AudioSyncContext);
+							FScopeLock RenderLock(&RenderSyncContext);
+
+							// reset the connection information
+							NDIlib_recv_connect(p_receive_instance, nullptr);
+							this->ConnectionInformation.Reset();
+
+							// Create a frame sync instance if one doesn't exist
+							if (p_framesync_instance == nullptr)
+							{
+								// create a new frame sync instance
+								p_framesync_instance = NDIlib_framesync_create(p_receive_instance);
+							}
+						}
+					}
+
+					// Don't spin up too fast
+					FPlatformProcess::Sleep(0.1f);
+				}
+
+				// set a state to allow re-entry
+				bIsConnectingToQueueItem = false;
+			});
 		}
-
-		// otherwise just set the connection to 'null' so that we can still keep the receiver
-		else
-		{
-			NDIlib_recv_connect(p_receive_instance, nullptr);
-			this->ConnectionInformation.Reset();
-		}
-
-		// destroy the previous framesync_instance
-		if (p_framesync_instance != nullptr)
-			NDIlib_framesync_destroy(p_framesync_instance);
-
-		// create a new frame sync instance
-		p_framesync_instance = NDIlib_framesync_create(p_receive_instance);
-	}
-}
-
-/**
-	Attempts to change the SoundWave object used as the audio frame capture object
-*/
-void UNDIMediaReceiver::ChangeAudioWave(UNDIMediaSoundWave* InAudioWave)
-{
-	FScopeLock Lock(&AudioSyncContext);
-
-	// Remove ourselves from the previous audio wave object
-	if (IsValid(this->AudioWave))
-	{
-		this->AudioWave->SetConnectionSource(nullptr);
-	}
-
-	// set to the new wave object
-	this->AudioWave = InAudioWave;
-
-	// ensure we are registered with the audio source, so that we can be called
-	// in place of 'GeneratePCMData'
-	if (IsValid(AudioWave))
-	{
-		this->AudioWave->SetConnectionSource(nullptr);
 	}
 }
 
@@ -165,8 +219,10 @@ void UNDIMediaReceiver::ChangeVideoTexture(UNDIMediaTexture2D* InVideoTexture)
 /**
 	Attempts to generate the pcm data required by the 'AudioWave' object
 */
-int32 UNDIMediaReceiver::GeneratePCMData(uint8* PCMData, const int32 SamplesNeeded)
+int32 UNDIMediaReceiver::GeneratePCMData(UNDIMediaSoundWave* AudioWave, uint8* PCMData, const int32 SamplesNeeded)
 {
+	FScopeLock Lock(&AudioSyncContext);
+
 	int32 samples_generated = 0;
 	int32 sample_rate	= IsValid(AudioWave) ? AudioWave->GetSampleRateForCurrentPlatform() : 48000;
 	int32 channels		= IsValid(AudioWave) ? AudioWave->NumChannels : 1;
@@ -196,10 +252,30 @@ int32 UNDIMediaReceiver::GeneratePCMData(uint8* PCMData, const int32 SamplesNeed
 		// clean up our audio frame
 		NDIlib_framesync_free_audio(p_framesync_instance, &audio_frame);
 
-		samples_generated = available_samples*sizeof(int16);
-	}
+		samples_generated = available_samples*sizeof(int16);		
+	}	
 
 	return samples_generated;
+}
+
+/**
+	Attempts to register a sound wave object with this object
+*/
+void UNDIMediaReceiver::RegisterAudioWave(UNDIMediaSoundWave* InAudioWave)
+{
+	FScopeLock Lock(&AudioSyncContext);
+
+	// Determine if the audio wave being passed into this object is valid
+	if (IsValid(InAudioWave))
+	{
+		// Only add sources which are not already apart of this receiver
+		if (!AudioSourceCollection.ContainsByPredicate([&](UNDIMediaSoundWave* Source) {
+			return Source == InAudioWave; })) {
+
+			AudioSourceCollection.Add(InAudioWave);
+			InAudioWave->SetConnectionSource(this);			
+		}
+	}
 }
 
 /**
@@ -226,11 +302,22 @@ void UNDIMediaReceiver::Shutdown()
 {
 	{ FScopeLock AudioLock(&AudioSyncContext);
 		
-		if (IsValid(AudioWave))
+		// get the number of available audio sources within the collection
+		int32 source_count = AudioSourceCollection.Num();
+
+		// iterate the collection of available audio sources
+		for (int32 iter = source_count - 1; iter >= 0; --iter)
 		{
-			// Remove ourselves from the Audio wave object which is trying to render audio frames
-			// as fast as possible
-			this->AudioWave->SetConnectionSource(nullptr);
+			// Define and Determine the validity of an item within the collection
+			if (auto* AudioWave = AudioSourceCollection[iter])
+			{
+				// ensure that we remove the audio source reference
+				AudioSourceCollection.RemoveAt(iter);
+
+				// Remove ourselves from the Audio wave object which is trying to render audio frames
+				// as fast as possible
+				AudioWave->SetConnectionSource(nullptr);
+			}
 		}
 	}
 
@@ -249,10 +336,47 @@ void UNDIMediaReceiver::Shutdown()
 		}
 	}
 
+	this->bWasConnected = false;
+	this->bIsCurrentlyConnected = false;
+
 	this->ConnectionInformation.Reset();
 	this->PerformanceData.Reset();
 	this->FrameRate = FFrameRate(60, 1);
 	this->Timecode = FTimecode(0, FrameRate, true, true);	
+}
+
+/** 
+	Remove the AudioWave object from this object (if it was previously registered)
+
+	@param InAudioWave An NDIMediaSoundWave object registered with this object
+*/
+void UNDIMediaReceiver::UnregisterAudioWave(UNDIMediaSoundWave* InAudioWave)
+{
+	FScopeLock Lock(&AudioSyncContext);
+
+	// Determine if the audio wave being passed into this object is valid
+	if (IsValid(InAudioWave))
+	{
+		// We don't care about the order of the collection, 
+		// we only care to remove the object as fast as possible
+		this->AudioSourceCollection.RemoveSwap(InAudioWave);
+	}
+}
+
+/**
+	Updates the DynamicMaterial with the VideoTexture of this object
+*/
+void UNDIMediaReceiver::UpdateMaterialTexture(UMaterialInstanceDynamic* MaterialInstance, FString ParameterName)
+{
+	// Ensure that both the material instance and the video texture are valid
+	if (IsValid(MaterialInstance) && IsValid(this->VideoTexture))
+	{
+		// Call the function to set the texture parameter with the proper texture
+		MaterialInstance->SetTextureParameterValue(
+			FName(*ParameterName), 
+			this->VideoTexture
+		);
+	}
 }
 
 /**
@@ -288,7 +412,7 @@ void UNDIMediaReceiver::CaptureConnectedVideo()
 		{
 			// Using a frame-sync we can always get data which is the magic and it will adapt 
 			// to the frame-rate that it is being called with.
-			NDIlib_video_frame_v2_t video_frame;			
+			NDIlib_video_frame_v2_t video_frame;
 			NDIlib_framesync_capture_video(p_framesync_instance, &video_frame, NDIlib_frame_format_type_progressive);
 			
 			// Display video here. The reason that the frame-sync does not return a frame until it has
@@ -296,11 +420,62 @@ void UNDIMediaReceiver::CaptureConnectedVideo()
 			// want to default to some video standard (NTSC or PAL) and there would be no way to know what
 			// your default image should be from an API level.
 			if (video_frame.p_data)
+			{	
+				// Ensure that we start the audio capture for those that need to be notified
+				if (!bWasConnected && OnNDIReceiverConnectedEvent.IsBound())
+				{
+					AsyncTask(ENamedThreads::GameThread, [&]() {
+
+						// Broadcast the event
+						OnNDIReceiverConnectedEvent.Broadcast(this);
+					});
+
+					// ensure that we store the state
+					bWasConnected = true;
+					bIsCurrentlyConnected = true;
+				}
+
+				// Determine if we need to update the current frame
+				bool RequiresUpdate = false;
+
+				{
+					// Ensure that we are synced with the 'UpdateTimecode' function
+					FScopeLock TimecodeSync(&TimecodeSyncContext);
+
+					// ensure the result from the SyncTimecode and the LastSyncTimecode
+					RequiresUpdate = SyncTimecode != LastSyncTimecode;
+
+					// determine if we are updating the 'Timecode' property with the timecode from the video_frame
+					if (bSyncTimecodeToSource)
+					{
+						// Update the timecode from the current 'video_frame.timecode' value
+						SourceTime = video_frame.timecode % 864000000000;
+					}
+				}
+
+				// Timecode is set during the 'GeneratePCMData' portion which is run on the update thread
+				if (RequiresUpdate)
+				{
+					// we need a command list to work with
+					FRHICommandListImmediate& RHICmdList = FRHICommandListExecutor::GetImmediateCommandList();
+
+					// ensure we store the last timecode value
+					LastSyncTimecode = SyncTimecode;
+
+					// Actually draw the video frame from cpu to gpu
+					DrawVideoFrame(RHICmdList, video_frame);
+				}
+
+				// Update the Framerate, if it has changed
+				this->FrameRate.Numerator = video_frame.frame_rate_N;
+				this->FrameRate.Denominator = video_frame.frame_rate_D;
+			}
+
+			// Reset the connection status of this object
+			else if (bWasConnected)
 			{
-				FRHICommandListImmediate& RHICmdList = FRHICommandListExecutor::GetImmediateCommandList();
-				
-				// Actually draw the video frame from cpu to gpu
-				DrawVideoFrame(RHICmdList, video_frame);				
+				this->bWasConnected = false;
+				this->bIsCurrentlyConnected = false;
 			}
 
 			// Release the video. You could keep the frame if you want and release it later.
@@ -310,6 +485,51 @@ void UNDIMediaReceiver::CaptureConnectedVideo()
 			GatherPerformanceMetrics();
 		}
 	}
+}
+
+void UNDIMediaReceiver::UpdateTimecode()
+{
+	FScopeLock TimecodeSync(&TimecodeSyncContext);
+
+	int64 SystemTime = FDateTime::Now().GetTimeOfDay().GetTicks();
+
+	// Should we ignore timecode from source information?
+	if (!bSyncTimecodeToSource)
+	{
+		// Alright well... update the 'SourceTime' with the system time
+		SourceTime = SystemTime;
+	}
+
+	// Update the timecode from the current 'SystemTime' value
+	this->SyncTimecode = FTimecode::FromTimespan(
+		FTimespan::FromSeconds(SystemTime / (float)1e+7),
+		FrameRate,
+		FTimecode::IsDropFormatTimecodeSupported(FrameRate),
+		true	// use roll-over timecode
+	);
+
+	// Update the timecode from the current 'SourceTime' value
+	this->Timecode = FTimecode::FromTimespan(
+		FTimespan::FromSeconds(SourceTime / (float)1e+7),
+		FrameRate,
+		FTimecode::IsDropFormatTimecodeSupported(FrameRate),
+		true	// use roll-over timecode
+	);
+}
+
+FNDIConnectionInformation UNDIMediaReceiver::GetNextConnectionInQueue()
+{
+	FNDIConnectionInformation Result;
+
+	FScopeLock Lock(&ConnectionSyncContext);	
+
+	if (ConnectionQueue.Num() > 0)
+	{
+		Result = ConnectionQueue.Last();
+		ConnectionQueue.Empty();
+	}
+
+	return Result;
 }
 
 /**
@@ -386,12 +606,12 @@ void UNDIMediaReceiver::DrawVideoFrame(FRHICommandListImmediate& RHICmdList, NDI
 	GraphicsPSOInit.PrimitiveType = PT_TriangleStrip;
 
 	// configure media shaders
-	//TShaderMap<FGlobalShaderType>* ShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
+	FGlobalShaderMap* ShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
 	FVertexBufferRHIRef VertexBuffer = CreateTempMediaVertexBuffer();
 
 	// construct the shaders
-	TShaderMapRef<FMediaShadersVS> VertexShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
-	TShaderMapRef<FRGBConvertPS> ConvertShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
+	TShaderMapRef<FMediaShadersVS> VertexShader(ShaderMap);
+	TShaderMapRef<FRGBConvertPS> ConvertShader(ShaderMap);
 
 	// perform binding operations for the shaders to be used
 	GraphicsPSOInit.BoundShaderState.VertexDeclarationRHI = GMediaVertexDeclaration.VertexDeclarationRHI;
@@ -446,11 +666,6 @@ void UNDIMediaReceiver::GatherPerformanceMetrics()
 	this->PerformanceData.MetadataFrames = stable_performance.metadata_frames;
 	this->PerformanceData.VideoFrames = stable_performance.video_frames;
 }
-
-/**
-	Returns the sound wave object used by this object for audio
-*/
-UNDIMediaSoundWave* UNDIMediaReceiver::GetMediaSoundWave() const { return this->AudioWave; }
 
 /**
 	Returns the current performance data of the receiver while connected to the source

@@ -21,13 +21,7 @@ void ANDIBroadcastActor::BeginPlay()
 	// validate the viewport capture component
 	if (IsValid(this->ViewportCaptureComponent))
 	{
-		// define an error message to retrieve from the 'StartBroadcast' functionality
-		FString ErrorMessage = TEXT("");
-
 		// Initialize the Capture Component with the media source
 		ViewportCaptureComponent->Initialize(this->NDIMediaSource);
-
-		// Start broadcasting
-		ViewportCaptureComponent->StartBroadcasting(ErrorMessage);
 	}
 }

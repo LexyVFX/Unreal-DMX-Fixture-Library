@@ -78,10 +78,21 @@ void FNDIIOPluginModule::StartupModule()
 
 		#if UE_EDITOR		
 
-		const FText& WarningMessage = LOCTEXT("NDIRuntimeMissing", "Unable to load \"Processing.NDI.Lib.x64.dll\" from the NDI 4 Runtime Directory.");
+		const FText& WarningMessage = 
+			LOCTEXT("NDIRuntimeMissing", 				
+				"Cannot find \"Processing.NDI.Lib.x64.dll\" from the NDI 4 Runtime Directory. "\
+				"Continued usage of the plugin can cause instability within the editor.\r\n\r\n"\
+				
+				"Please refer to the 'NDI IO Plugin for Unreal Engine Quickstart Guide' "\
+				"for additional information related to installation instructions for this plugin.\r\n\r\n"				
+			);
 
 		// Open a message box, showing that things will not work since the NDI Runtime Directory cannot be found
-		FMessageDialog::Open(EAppMsgType::Ok, EAppReturnType::Ok, WarningMessage);
+		if (FMessageDialog::Open(EAppMsgType::OkCancel, EAppReturnType::Ok, WarningMessage) == EAppReturnType::Ok)
+		{
+			FString URLResult = FString("");
+			FPlatformProcess::LaunchURL(*FString("http://new.tk/UnrealNDISDK425Guide"), nullptr, &URLResult);
+		}
 
 		#endif
 	}
@@ -92,11 +103,15 @@ void FNDIIOPluginModule::ShutdownModule()
 	if (NDIFinderService.IsValid())
 		NDIFinderService->Shutdown();
 
+	#if UE_EDITOR
+
 	if (NDI_LIB_HANDLE != nullptr)
 	{
 		FPlatformProcess::FreeDllHandle(NDI_LIB_HANDLE);
 		NDI_LIB_HANDLE = nullptr;
 	}
+
+	#endif
 }
 
 bool FNDIIOPluginModule::BeginBroadcastingActiveViewport()
@@ -131,7 +146,7 @@ bool FNDIIOPluginModule::LoadModuleDependecies()
 	if (binaries_path.Len() > 0)
 	{
 		// Load the DLL
-		this->NDI_LIB_HANDLE = FPlatformProcess::GetDllHandle(*binaries_path);		
+		this->NDI_LIB_HANDLE = FPlatformProcess::GetDllHandle(*binaries_path);
 
 		// Not required, but "correct" (see the SDK documentation)
 		if (NDI_LIB_HANDLE != nullptr && !NDIlib_initialize())

@@ -15,6 +15,7 @@
 #include <Engine/TextureRenderTarget2D.h>
 #include <Structures/NDIBroadcastConfiguration.h>
 #include <Objects/Media/NDIMediaTexture2D.h>
+#include <BaseMediaSource.h>
 
 #include "NDIMediaSender.generated.h"
 
@@ -27,8 +28,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FNDIMediaSenderPropertyChanged, UNDI
 	Defines a media object representing an NDI® Sender object. This object is used with the 
 	NDI Broadcast Component to send Audio / Video / Metadata to a 'receiving' NDI object.
 */
-UCLASS(BlueprintType, Blueprintable, Category = "NDI IO", META = (DisplayName = "NDI Sender Object"))
-class NDIIO_API UNDIMediaSender : public UObject
+UCLASS(BlueprintType, Blueprintable, HideCategories = ("Platforms"), Category = "NDI IO", META = (DisplayName = "NDI Sender Object"))
+class NDIIO_API UNDIMediaSender : public UBaseMediaSource
 {
 	GENERATED_UCLASS_BODY()
 
@@ -152,6 +153,9 @@ class NDIIO_API UNDIMediaSender : public UObject
 			@param InFrameRate The frame rate at which we should be sending frames via NDI
 		*/
 		void ChangeRenderTargetConfiguration(FIntPoint InFrameSize, FFrameRate InFrameRate);
+
+		virtual bool Validate() const override { return true; }
+		virtual FString GetUrl() const override { return FString(); }
 
 	private:		
 		bool bIsChangingBroadcastSize = false;

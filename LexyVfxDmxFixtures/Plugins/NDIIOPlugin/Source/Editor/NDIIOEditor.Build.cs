@@ -66,14 +66,16 @@ public class NDIIOEditor : ModuleRules
                 "PlacementMode",
                 "CinematicCamera",
 
-
                 "RHI",
                 "Slate",
                 "SlateCore",
                 "UMG",
                 "ImageWrapper",
+
                 "Media",
+                "MediaAssets",
                 "MediaUtils",
+
                 "AssetTools",
                 "TargetPlatform",
                 "PropertyEditor",

@@ -18,7 +18,7 @@
 	#include <Windows/AllowWindowsPlatformTypes.h>
 	
 	#ifndef NDI_SDK_ENABLED
-		#error NDI® 4.0 SDK must be installed for the NDI® IO plugin to run properly.
+		#error NDI® 4.x Runtime must be installed for the NDI® IO plugin to run properly.
 	#endif
 
 	#ifdef NDI_SDK_ENABLED

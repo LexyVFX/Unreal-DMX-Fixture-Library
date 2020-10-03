@@ -219,6 +219,8 @@ bool UNDIMediaSender::DrawRenderTarget(FRHICommandListImmediate& RHICmdList, voi
 			// We have something to draw
 			DrawResult = true;
 
+			#if UE_EDITOR
+
 			// if the sizes are the same, just copy the render target to the read back texture
 			if (SourceTexture->GetSizeXY() == ReadbackTexture->GetSizeXY())
 			{
@@ -230,6 +232,9 @@ bool UNDIMediaSender::DrawRenderTarget(FRHICommandListImmediate& RHICmdList, voi
 
 			// we need to perform a resize on the output frame
 			else
+
+			#endif
+
 			{
 				// Define the RenderTargetPool 
 				TRefCountPtr<IPooledRenderTarget> RenderTargetTexturePool;
@@ -255,12 +260,12 @@ bool UNDIMediaSender::DrawRenderTarget(FRHICommandListImmediate& RHICmdList, voi
 				GraphicsPSOInit.PrimitiveType = PT_TriangleStrip;
 
 				// configure media shaders
-				//TShaderMap<FGlobalShaderType>* ShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
+				FGlobalShaderMap* ShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
 				FVertexBufferRHIRef VertexBuffer = CreateTempMediaVertexBuffer();
 
 				// construct the shaders
-				TShaderMapRef<FMediaShadersVS> VertexShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
-				TShaderMapRef<FRGBConvertPS> ConvertShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
+				TShaderMapRef<FMediaShadersVS> VertexShader(ShaderMap);
+				TShaderMapRef<FRGBConvertPS> ConvertShader(ShaderMap);
 
 				// perform binding operations for the shaders to be used
 				GraphicsPSOInit.BoundShaderState.VertexDeclarationRHI = GMediaVertexDeclaration.VertexDeclarationRHI;
@@ -445,7 +450,7 @@ void UNDIMediaSender::GetNumberOfConnections(int32& Result)
 	if (p_send_instance != nullptr)
 	{
 		// call the SDK to get the current number of connection for the sender instance of this object
-		Result = NDIlib_send_get_no_connections(p_send_instance, 0);
+		Result = NDIlib_send_get_no_connections(p_send_instance, 0);		
 	}
 }
 

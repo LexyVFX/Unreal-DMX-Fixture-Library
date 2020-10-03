@@ -46,6 +46,7 @@ class NDIIO_API UNDIMediaSoundWave : public USoundWave
 		virtual FByteBulkData* GetCompressedData(FName Format, const FPlatformAudioCookOverrides* CompressionOverrides) override;
 
 	private:		
-		FCriticalSection SyncContext;
+		bool bIsPlaying = false;
+		FCriticalSection SyncContext;		
 		class UNDIMediaReceiver* MediaSource = nullptr;
 };

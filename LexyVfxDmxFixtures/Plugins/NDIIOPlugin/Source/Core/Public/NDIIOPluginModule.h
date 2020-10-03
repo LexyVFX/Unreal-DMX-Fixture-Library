@@ -28,7 +28,7 @@ class NDIIO_API FNDIIOPluginModule : public IModuleInterface
 		virtual void ShutdownModule() override;
 
 		bool BeginBroadcastingActiveViewport();
-		void StopBroadcastingActiveViewport();
+		void StopBroadcastingActiveViewport();		
 		
 	private:
 		bool LoadModuleDependecies();		

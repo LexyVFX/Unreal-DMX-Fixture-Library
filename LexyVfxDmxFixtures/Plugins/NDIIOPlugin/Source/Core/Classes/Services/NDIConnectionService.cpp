@@ -20,6 +20,7 @@
 
 /** Define Global Accessors */
 
+bool FNDIConnectionService::IsInEditorMode = false;
 FNDIConnectionServiceSendEvent FNDIConnectionService::EventOnSendAudioFrame;
 FNDIConnectionServiceSendEvent FNDIConnectionService::EventOnSendVideoFrame;
 
@@ -92,7 +93,7 @@ bool FNDIConnectionService::Start()
 
 		#if WITH_EDITOR
 
-		FEditorDelegates::BeginPIE.AddLambda([&](const bool Success) { this->bIsInPie = true; });
+		FEditorDelegates::BeginPIE.AddLambda([&](const bool Success) { IsInEditorMode = true; });
 		FEditorDelegates::PrePIEEnded.AddLambda([&](const bool Success) { StopBroadcastingActiveViewport(); });
 
 		#endif
@@ -260,7 +261,7 @@ void FNDIConnectionService::StopBroadcastingActiveViewport()
 	FScopeLock RenderLock(&RenderSyncContext);
 
 	// reset the initialization properties
-	bIsInPie = false;
+	IsInEditorMode = false;
 
 	// Ensure that if the active viewport sender is active, that we shut it down
 	if (IsValid(this->ActiveViewportSender))

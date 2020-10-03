@@ -11,20 +11,43 @@ UNDIMediaSoundWave::UNDIMediaSoundWave(const FObjectInitializer& ObjectInitializ
 	: Super(ObjectInitializer) { 
 
 	// Set the Default Values for this object
-	this->bProcedural = true;
+	this->bProcedural = true;	
 	this->bLooping = false;
 	this->NumChannels = 1;
 	this->SampleRate = 48000;
 
-	this->SoundGroup = SOUNDGROUP_UI;
-	this->Duration = INDEFINITELY_LOOPING_DURATION;
+	this->SoundGroup = SOUNDGROUP_Default;
+	this->Duration = INDEFINITELY_LOOPING_DURATION;	
+
+	this->bOverrideConcurrency = true;
+	this->ConcurrencyOverrides.bLimitToOwner = true;
+	this->ConcurrencyOverrides.MaxCount = 2;
 }
 
 /**
 	Set the Media Source of this object, so that when this object is called to 'GeneratePCMData' by the engine
 	we can request the media source to provide the pcm data from the current connected source
 */
-void UNDIMediaSoundWave::SetConnectionSource(class UNDIMediaReceiver* InMediaSource) { this->MediaSource = InMediaSource; }
+void UNDIMediaSoundWave::SetConnectionSource(UNDIMediaReceiver* InMediaSource) 
+{ 
+	// Ensure there is no thread contention for generating pcm data from the connection source
+	FScopeLock Lock(&SyncContext);
+
+	// Do we have a media source object to work with
+	if (this->MediaSource != nullptr)
+	{
+		// Are we already registered with the incoming media source object
+		if (this->MediaSource != InMediaSource)
+		{
+			// It doesn't look like we are registered with the incoming, make sure
+			// to unregistered with the previous source
+			this->MediaSource->UnregisterAudioWave(this);
+		}	
+	}
+
+	// Ensure we have a reference to the media source object
+	this->MediaSource = InMediaSource; 
+}
 
 /**
 	Called by the engine to generate pcm data to be 'heard' by audio listener objects
@@ -41,13 +64,13 @@ int32 UNDIMediaSoundWave::GeneratePCMData(uint8* PCMData, const int32 SamplesNee
 	if (this->MediaSource != nullptr)
 	{
 		// Ask the connection source to generate pcm data for this object
-		samples_generated = MediaSource->GeneratePCMData(PCMData, SamplesNeeded);
+		samples_generated = MediaSource->GeneratePCMData(this, PCMData, SamplesNeeded);		
 	}
 	else
 	{
 		// just send silence since we don't have a connection source
 		FMemory::Memset(PCMData, 0, samples_generated);
-	}
+	}	
 
 	// return to the engine the number of samples actually generated
 	return samples_generated;

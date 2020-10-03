@@ -7,16 +7,23 @@
 
 
 #include <Actors/NDIReceiveActor.h>
+#include <Services/NDIConnectionService.h>
 
+#include <AudioDevice.h>
+#include <ActiveSound.h>
+#include <Async/Async.h>
 #include <Engine/StaticMesh.h>
-#include <UObject/ConstructorHelpers.h>
+#include <Kismet/GameplayStatics.h>
+#include <Materials/MaterialInstanceDynamic.h>
 #include <Objects/Media/NDIMediaTexture2D.h>
+#include <UObject/ConstructorHelpers.h>
 
 ANDIReceiveActor::ANDIReceiveActor(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer) {
 
 	// Get the Engine's 'Plane' static mesh
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> MeshObject(TEXT("StaticMesh'/Engine/BasicShapes/Plane.Plane'"));	
+	static ConstructorHelpers::FObjectFinder<UStaticMesh>		 MeshObject(TEXT("StaticMesh'/Engine/BasicShapes/Plane.Plane'"));	
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> MaterialObject(TEXT("Material'/NDIIOPlugin/Materials/NDI_Unlit_SourceMaterial.NDI_Unlit_SourceMaterial'"));
 
 	// Ensure that the object is valid
 	if (MeshObject.Object)
@@ -29,28 +36,122 @@ ANDIReceiveActor::ANDIReceiveActor(const FObjectInitializer& ObjectInitializer)
 		this->VideoMeshComponent->SetStaticMesh(MeshObject.Object);
 		this->VideoMeshComponent->SetRelativeRotation(FQuat::MakeFromEuler(FVector(90.0f, 0.0f, 90.0f)));
 		this->VideoMeshComponent->SetRelativeScale3D(FVector(FrameWidth / 100.0f, FrameHeight / 100.0f, 1.0f));
+
+		this->VideoMeshComponent->SetCollisionResponseToAllChannels(ECR_Ignore);
+		this->VideoMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		this->VideoMeshComponent->SetCollisionObjectType(ECC_WorldDynamic);
+		
+		// This is object is mainly used for simple tests and things that don't require
+		// additional material shading support, store the an unlit source material to display	
+		this->VideoMaterial = MaterialObject.Object;
+
+		// If the material is valid
+		if (this->VideoMaterial)
+		{
+			// Set the Mesh Material to the Video Material
+			this->VideoMeshComponent->SetMaterial(0, this->VideoMaterial);
+		}
 	}
 
-	// create the audio component used for audio playback
 	this->AudioComponent = ObjectInitializer.CreateDefaultSubobject<UAudioComponent>(this, TEXT("AudioComponent"));
 	this->AudioComponent->SetupAttachment(RootComponent);
+	this->AudioComponent->SetRelativeLocationAndRotation(FVector::ZeroVector, FRotator::ZeroRotator);
+	this->AudioComponent->SetRelativeScale3D(FVector::OneVector);	
+
+	this->bAllowTickBeforeBeginPlay = false;	
 }
 
 void ANDIReceiveActor::BeginPlay()
 {
 	// call the base implementation for 'BeginPlay'
 	Super::BeginPlay();
-
-	// Validate the NDI Media Source
+	
+	// We need to validate that we have media source, so we can set the texture in the material instance
 	if (IsValid(this->NDIMediaSource))
 	{
-		// Validate the MediaSource Audio object
-		if (USoundBase* MediaAudio = NDIMediaSource->GetMediaSoundWave())
+		// Validate the Video Material Instance so we can set the texture used in the NDI Media source
+		if (IsValid(this->VideoMaterial))
 		{
-			// Set the Sound object of the Media Source and begin playing
-			this->AudioComponent->SetSound(MediaAudio);
-			this->AudioComponent->Play(0.0f);
+			// create and set the instance material from the MaterialObject
+			VideoMaterialInstance = this->VideoMeshComponent->CreateAndSetMaterialInstanceDynamicFromMaterial(0, this->VideoMaterial);
+
+			// Ensure we have a valid material instance
+			if (IsValid(VideoMaterialInstance))
+			{
+				// alright ensure that the video texture is always enabled
+				this->VideoMaterialInstance->SetScalarParameterValue("Enable Video Alpha", 0.0f);
+				this->VideoMaterialInstance->SetScalarParameterValue("Enable Video Texture", 1.0f);	
+
+				this->NDIMediaSource->UpdateMaterialTexture(VideoMaterialInstance, "Video Texture");				
+			}
 		}
+
+		// Define the basic parameters for constructing temporary audio wave object
+		FString AudioSource = FString::Printf(TEXT("AudioSource_%s"), *GetFName().ToString().Right(1));
+		FName AudioWaveName = FName(*AudioSource);
+		EObjectFlags Flags = RF_Public | RF_Standalone | RF_Transient | RF_MarkAsNative;
+
+		// Construct a temporary audio sound wave to be played by this component
+		this->AudioSoundWave = NewObject<UNDIMediaSoundWave>(
+			GetTransientPackage(),
+			UNDIMediaSoundWave::StaticClass(),
+			AudioWaveName,
+			Flags
+		);
+
+		// Ensure the validity of the temporary sound wave object
+		if (IsValid(this->AudioSoundWave))
+		{
+			// Set the sound of the Audio Component and Ensure playback
+			this->AudioComponent->SetSound(this->AudioSoundWave);
+
+			// Ensure we register the audio wave object with the media.
+			this->NDIMediaSource->RegisterAudioWave(AudioSoundWave);
+		}
+
+		if (this->NDIMediaSource->GetCurrentConnectionInformation().IsValid())
+		{
+			if (IsValid(AudioComponent))
+			{
+				// we should play the audio, if we want audio playback
+				if (bEnableAudioPlayback)
+				{
+					this->AudioComponent->Play(0.0f);
+				}
+
+				// otherwise just stop
+				else this->AudioComponent->Stop();
+			}
+		}
+
+		// Add a lambda to the OnReceiverConnected Event
+		else this->NDIMediaSource->OnNDIReceiverConnectedEvent.AddWeakLambda(this, [&](UNDIMediaReceiver*) {
+
+			// Ensure that the audio component is valid
+			if (IsValid(AudioComponent))
+			{
+				// we should play the audio, if we want audio playback
+				if (bEnableAudioPlayback)
+				{
+					this->AudioComponent->Play(0.0f);
+				}
+
+				// otherwise just stop
+				else this->AudioComponent->Stop();
+			}
+		});
+	}
+}
+
+void ANDIReceiveActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	Super::EndPlay(EndPlayReason);
+
+	// Ensure we have a valid material instance
+	if (EndPlayReason == EEndPlayReason::EndPlayInEditor && IsValid(VideoMaterialInstance))
+	{
+		// alright ensure that the video texture is always enabled
+		this->VideoMaterialInstance->SetScalarParameterValue("Enable Video Texture", 0.0f);
 	}
 }
 
@@ -89,6 +190,23 @@ void ANDIReceiveActor::SetFrameWidth(const float& InFrameWidth)
 	SetFrameSize(FVector2D(FrameWidth, FrameHeight));
 }
 
+void ANDIReceiveActor::UpdateAudioPlayback(const bool& Enabled)
+{
+	// Ensure validity and we are currently playing
+	if (IsValid(this->AudioComponent))
+	{
+		// Stop playback when possible
+		if (Enabled)
+		{
+			// Start the playback
+			this->AudioComponent->Play(0.0f);
+		}
+
+		// otherwise just stop playback (even if it's not playing)
+		else this->AudioComponent->Stop();
+	}
+}
+
 /**
 	Returns the current frame size of the 'VideoMeshComponent' for this object
 */
@@ -120,6 +238,13 @@ void ANDIReceiveActor::PostEditChangeProperty(FPropertyChangedEvent& PropertyCha
 	{
 		// resize the frame
 		SetFrameSize(FVector2D(FrameWidth / 100.0f, FrameHeight / 100.0f));
+	}
+
+	// compare against the 'bEnableAudioPlayback' property
+	else if (PropertyName == GET_MEMBER_NAME_CHECKED(ANDIReceiveActor, bEnableAudioPlayback))
+	{
+		// resize the frame
+		UpdateAudioPlayback(bEnableAudioPlayback);
 	}
 
 	// call the base class 'PostEditChangeProperty'

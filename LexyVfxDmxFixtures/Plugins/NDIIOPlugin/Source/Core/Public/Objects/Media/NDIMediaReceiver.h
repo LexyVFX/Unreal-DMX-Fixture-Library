@@ -12,6 +12,7 @@
 #include <UObject/Object.h>
 #include <Misc/Timecode.h>
 #include <Misc/FrameRate.h>
+#include <BaseMediaSource.h>
 
 #include <Objects/Media/NDIMediaSoundWave.h>
 #include <Objects/Media/NDIMediaTexture2D.h>
@@ -23,8 +24,8 @@
 /** 
 	A Media object representing the NDI Receiver for being able to receive Audio, Video, and Metadata over NDI®
 */
-UCLASS(BlueprintType, Blueprintable, Category = "NDI IO", HideCategories = ("Information"), META = (DisplayName = "NDI Media Receiver"))
-class NDIIO_API UNDIMediaReceiver : public UObject
+UCLASS(BlueprintType, Blueprintable, HideCategories = ("Platforms"), Category = "NDI IO", HideCategories = ("Information"), META = (DisplayName = "NDI Media Receiver"))
+class NDIIO_API UNDIMediaReceiver : public UBaseMediaSource
 {
 	GENERATED_UCLASS_BODY()
 
@@ -40,6 +41,12 @@ class NDIIO_API UNDIMediaReceiver : public UObject
 		*/
 		UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Information", META = (DisplayName = "Frame Rate", AllowPrivateAccess = true))
 		FFrameRate FrameRate;
+		
+		/** 
+			Indicates whether the timecode should be synced to the Source Timecode value
+		*/
+		UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Settings", META = (DisplayName = "Sync Timecode to Source", AllowPrivateAccess = true))
+		bool bSyncTimecodeToSource = true;
 
 		/** 
 			Should perform the sRGB to Linear color space conversion
@@ -60,18 +67,22 @@ class NDIIO_API UNDIMediaReceiver : public UObject
 		FNDIReceiverPerformanceData PerformanceData;
 
 		/** 
-			Provides an NDI Sound Wave object to render audio frames from the source into.
-		*/
-		UPROPERTY(BlueprintReadWrite, EditAnywhere, BlueprintSetter = "ChangeAudioWave", Category = "Content", META = (DisplayName = "Audio Wave", AllowPrivateAccess = true))
-		UNDIMediaSoundWave* AudioWave = nullptr;
-
-		/** 
 			Provides an NDI Video Texture object to render videos frames from the source onto 
 		*/
 		UPROPERTY(BlueprintReadWrite, EditAnywhere, BlueprintSetter = "ChangeVideoTexture", Category = "Content", META = (DisplayName = "Video Texture", AllowPrivateAccess = true))
 		UNDIMediaTexture2D* VideoTexture = nullptr;
 
 	public:
+		DECLARE_EVENT_OneParam(FNDIMediaReceiverConnectionEvent, FOnReceiverConnectionEvent, UNDIMediaReceiver*)
+		FOnReceiverConnectionEvent OnNDIReceiverConnectedEvent;
+
+	public:
+		/**
+		   Called before destroying the object.  This is called immediately upon deciding to destroy the object, 
+		   to allow the object to begin an asynchronous cleanup process.
+		 */
+		void BeginDestroy() override;
+
 		/** 
 			Attempts to perform initialization logic for creating a receiver through the NDI® sdk api 
 		*/
@@ -83,12 +94,6 @@ class NDIIO_API UNDIMediaReceiver : public UObject
 		void ChangeConnection(const FNDIConnectionInformation& InConnectionInformation);
 		
 		/** 
-			Attempts to change the SoundWave object used as the audio frame capture object
-		*/
-		UFUNCTION(BlueprintSetter)
-		void ChangeAudioWave(UNDIMediaSoundWave* InAudioWave = nullptr);
-
-		/** 
 			Attempts to change the Video Texture object used as the video frame capture object
 		*/
 		UFUNCTION(BlueprintSetter)
@@ -97,7 +102,12 @@ class NDIIO_API UNDIMediaReceiver : public UObject
 		/** 
 			Attempts to generate the pcm data required by the 'AudioWave' object
 		*/
-		int32 GeneratePCMData(uint8* PCMData, const int32 SamplesNeeded);
+		int32 GeneratePCMData(UNDIMediaSoundWave* AudioWave, uint8* PCMData, const int32 SamplesNeeded);
+		
+		/** 
+			Attempts to register a sound wave object with this object 
+		*/
+		void RegisterAudioWave(UNDIMediaSoundWave* InAudioWave = nullptr);
 
 		/** 
 			This will add a metadata frame and return immediately, having scheduled the frame asynchronously
@@ -113,13 +123,19 @@ class NDIIO_API UNDIMediaReceiver : public UObject
 		/** 
 			Attempts to immediately stop receiving frames from the connected NDI sender 
 		*/
-		void Shutdown();
+		void Shutdown();				
 
-		/**
-		   Called before destroying the object.  This is called immediately upon deciding to destroy the object, 
-		   to allow the object to begin an asynchronous cleanup process.
-		 */
-		void BeginDestroy() override;
+		/** 
+			Remove the AudioWave object from this object (if it was previously registered)
+
+			@param InAudioWave An NDIMediaSoundWave object registered with this object
+		*/
+		void UnregisterAudioWave(UNDIMediaSoundWave* InAudioWave = nullptr);
+
+		/** 
+			Updates the DynamicMaterial with the VideoTexture of this object
+		*/
+		void UpdateMaterialTexture(class UMaterialInstanceDynamic* MaterialInstance, FString ParameterName);
 
 	private:
 		/**
@@ -159,10 +175,8 @@ class NDIIO_API UNDIMediaReceiver : public UObject
 		*/		
 		const FNDIReceiverPerformanceData& GetPerformanceData() const;
 
-		/** 
-			Returns the sound wave object used by this object for audio
-		*/
-		UNDIMediaSoundWave* GetMediaSoundWave() const;
+		/** Returns a value indicating whether this object is currently connected to the sender source */
+		const bool GetIsCurrentlyConnected() const;
 
 	private:
 		/**
@@ -170,14 +184,37 @@ class NDIIO_API UNDIMediaReceiver : public UObject
 		*/
 		void DrawVideoFrame(FRHICommandListImmediate& RHICmdList, NDIlib_video_frame_v2_t& Result);
 
+		void UpdateTimecode();
+
+		virtual bool Validate() const override { return true; }
+		virtual FString GetUrl() const override { return FString(); }
+
+		FNDIConnectionInformation GetNextConnectionInQueue();
+
 	private:
+		int64 SourceTime = 0;
+
+		FTimecode SyncTimecode;
+		FTimecode LastSyncTimecode;
+
+		bool bWasConnected = false;
+		bool bIsInitialConnection = false;
+		bool bIsCurrentlyConnected = false;
+		bool bIsConnectingToQueueItem = false;
+
 		NDIlib_recv_instance_t p_receive_instance = nullptr;
 		NDIlib_framesync_instance_t p_framesync_instance = nullptr;
 
 		FCriticalSection AudioSyncContext;
 		FCriticalSection RenderSyncContext;
+		FCriticalSection ConnectionSyncContext;
+		FCriticalSection TimecodeSyncContext;
+
+		TArray<UNDIMediaSoundWave*> AudioSourceCollection;
 
 		FTexture2DRHIRef SourceTexture;
 		FTexture2DRHIRef ConversionTexture;
 		FPooledRenderTargetDesc RenderTargetDescriptor;
+
+		TArray<FNDIConnectionInformation> ConnectionQueue;
 };

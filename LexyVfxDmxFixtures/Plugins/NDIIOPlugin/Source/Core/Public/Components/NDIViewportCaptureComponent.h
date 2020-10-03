@@ -65,15 +65,6 @@ class NDIIO_API UNDIViewportCaptureComponent : public UCineCameraComponent, publ
 		bool Initialize(UNDIMediaSender* InMediaSource = nullptr);
 
 		/** 
-			Attempts to start broadcasting audio, video, and metadata via the 'NDIMediaSource' associated with this object
-
-			@param ErrorMessage The error message received when the media source is unable to start broadcasting
-			@result Indicates whether this object successfully started broadcasting
-		*/
-		UFUNCTION(BlueprintCallable, Category = "NDI IO", META = (DisplayName = "Start Broadcasting"))
-		bool StartBroadcasting(FString& ErrorMessage);
-
-		/** 
 			Changes the name of the sender object as seen on the network for remote connections
 
 			@param InSourceName The new name of the source to be identified as on the network
@@ -126,14 +117,10 @@ class NDIIO_API UNDIViewportCaptureComponent : public UCineCameraComponent, publ
 		UFUNCTION(BlueprintCallable, Category = "NDI IO", META = (DisplayName = "Get Number of Connections"))
 		void GetNumberOfConnections(int32& Result);
 
-		/** 
-			Attempts to immediately stop sending frames over NDI to any connected receivers 
-		*/
-		UFUNCTION(BlueprintCallable, Category = "NDI IO", META = (DisplayName = "Stop Broadcasting"))
-		void StopBroadcasting();
-
 	protected:
+		virtual void InitializeComponent() override;
 		virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+		virtual void EndPlay(const EEndPlayReason::Type EndPlayReason);
 
 		virtual FIntPoint GetSizeXY() const override;
 
@@ -143,6 +130,8 @@ class NDIIO_API UNDIViewportCaptureComponent : public UCineCameraComponent, publ
 		virtual void CloseRequested(FViewport* Viewport) override;
 
 	private:
+		void EnsureViewInformation(bool ForceOverride = true);
+
 		UFUNCTION()
 		void OnBroadcastConfigurationChanged(UNDIMediaSender* Sender);
 

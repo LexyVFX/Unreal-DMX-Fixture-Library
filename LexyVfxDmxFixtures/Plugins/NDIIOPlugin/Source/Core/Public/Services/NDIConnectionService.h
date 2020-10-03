@@ -19,6 +19,8 @@ DECLARE_EVENT_OneParam(FNDICoreDelegates, FNDIConnectionServiceSendEvent, int64)
 class NDIIO_API FNDIConnectionService final
 {
 	public:
+		static bool IsInEditorMode;
+
 		static FNDIConnectionServiceSendEvent EventOnSendAudioFrame;
 		static FNDIConnectionServiceSendEvent EventOnSendVideoFrame;
 
@@ -37,7 +39,7 @@ class NDIIO_API FNDIConnectionService final
 		bool BeginBroadcastingActiveViewport();
 		void StopBroadcastingActiveViewport();
 
-		bool IsRunningInEditor() { return bIsInPie; }
+		bool IsRunningInEditor() { return IsInEditorMode; }
 
 	private:
 		// Handler for when the Non render thread frame has ended
@@ -52,8 +54,7 @@ class NDIIO_API FNDIConnectionService final
 		// Handler for when the back buffer is read to present to the end user
 		void OnActiveViewportBackbufferReadyToPresent(SWindow& Window, const FTexture2DRHIRef& Backbuffer);
 
-	private:
-		bool bIsInPie = false;
+	private:		
 		bool bIsInitialized = false;
 		bool bIsBroadcastingActiveViewport = false;
 

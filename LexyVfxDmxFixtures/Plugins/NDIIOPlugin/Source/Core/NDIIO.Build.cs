@@ -25,6 +25,9 @@ public class NDIIO : ModuleRules
             PublicIncludePaths.AddRange(new string[] {
                 // ... add public include paths required here ...
                 Path.Combine(ModuleDirectory, "Public" ),
+                "Runtime/Media/Public",
+                "Runtime/MediaAssets/Public",
+                "Runtime/MediaUtils/Public"
             });
         }
 
@@ -33,7 +36,10 @@ public class NDIIO : ModuleRules
             "Engine",
             "Core",
             "CoreUObject",
-            "Projects"
+            "Projects",
+            "Media",
+            "MediaAssets",
+            "MediaUtils",
         });
 
         #endregion

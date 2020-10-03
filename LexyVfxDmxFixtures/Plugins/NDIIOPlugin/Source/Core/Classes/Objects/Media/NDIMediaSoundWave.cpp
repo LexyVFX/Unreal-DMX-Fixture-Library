@@ -6,6 +6,7 @@
 */
 
 #include <Objects/Media/NDIMediaSoundWave.h>
+#include <Objects/Media/NDIMediaReceiver.h>
 
 UNDIMediaSoundWave::UNDIMediaSoundWave(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer) { 

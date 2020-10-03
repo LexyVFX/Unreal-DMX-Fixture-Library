@@ -3,6 +3,16 @@
 	"EngineAssociation": "4.25",
 	"Category": "",
 	"Description": "",
+	"Modules": [
+		{
+			"Name": "LexyVfxDmxFixtures",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"CoreUObject"
+			]
+		}
+	],
 	"Plugins": [
 		{
 			"Name": "MagicLeapMedia",
@@ -152,6 +162,10 @@
 		},
 		{
 			"Name": "DMXFixtures",
+			"Enabled": true
+		},
+		{
+			"Name": "NDIIOPlugin",
 			"Enabled": true
 		}
 	]

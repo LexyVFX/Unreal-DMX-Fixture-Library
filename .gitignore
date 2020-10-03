@@ -73,3 +73,8 @@ Plugins/*/Intermediate/*
 # Cache files for the editor to use
 DerivedDataCache/*
 LexyVfxDmxFixtures/Binaries/
+LexyVfxDmxFixtures/Saved/Crashes/
+LexyVfxDmxFixtures/Saved/Config/CrashReportClient/
+LexyVfxDmxFixtures/Saved/
+LexyVfxDmxFixtures/Intermediate/
+LexyVfxDmxFixtures/Plugins/NDIIOPlugin/Intermediate/

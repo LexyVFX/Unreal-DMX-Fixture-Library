@@ -10,6 +10,10 @@ public class LexyVFXCppFixtures : ModuleRules
 		
 		PublicIncludePaths.AddRange(
 			new string[] {
+                "../Plugins/Experimental/DigitalMultiplex/DMXEngine/Source/DMXRuntime/Public",
+                "../Plugins/Experimental/DigitalMultiplex/DMXProtocol/Source/DMXProtocol/Public",
+                "../Plugins/Experimental/DigitalMultiplex/DMXProtocol/Source/DMXProtocolArtNet/Public",
+                "../Plugins/Experimental/DigitalMultiplex/DMXProtocol/Source/DMXProtocolSACN/Public",
 				// ... add public include paths required here ...
 			}
 			);
@@ -26,6 +30,7 @@ public class LexyVFXCppFixtures : ModuleRules
 			new string[]
 			{
 				"Core",
+                "DMXRuntime",
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);

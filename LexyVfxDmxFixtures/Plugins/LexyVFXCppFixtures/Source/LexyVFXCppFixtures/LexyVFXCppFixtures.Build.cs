@@ -31,6 +31,7 @@ public class LexyVFXCppFixtures : ModuleRules
 			{
 				"Core",
                 "DMXRuntime",
+                "DMXProtocol",
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);

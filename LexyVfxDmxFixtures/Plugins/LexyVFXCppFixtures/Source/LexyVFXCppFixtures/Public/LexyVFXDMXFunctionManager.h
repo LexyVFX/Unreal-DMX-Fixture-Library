@@ -9,6 +9,7 @@
 #include "DMXRuntime/Public/Game/DMXComponent.h"
 #include "DMXRuntime/Public/Library/DMXEntity.h"
 #include "DMXRuntime/Public/Library/DMXEntityFixturePatch.h"
+#include "DMXProtocol/Public/DMXProtocolTypes.h"
 #include "LexyVFXDMXFunctionManager.generated.h"
 
 
@@ -40,4 +41,7 @@ public:
 
 	UFUNCTION()
 	virtual void SetParentDMXRef();
+
+	UFUNCTION()
+	void ReceivedDMX(FDMXProtocolName Protocol, int32 Universe, const TArray<uint8>& DMXBuffer);
 };

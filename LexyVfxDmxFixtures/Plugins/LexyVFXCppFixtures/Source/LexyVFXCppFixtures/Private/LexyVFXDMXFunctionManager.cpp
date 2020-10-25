@@ -56,3 +56,6 @@ void ULexyVFXDMXFunctionManager::SetParentDMXRef()
 	}
 }
 
+void ULexyVFXDMXFunctionManager::ReceivedDMX(FDMXProtocolName Protocol, int32 Universe, const TArray<uint8>& DMXBuffer)
+{
+}

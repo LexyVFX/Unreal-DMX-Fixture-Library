@@ -18,7 +18,8 @@ ULexyVFXDMXFunctionManager::ULexyVFXDMXFunctionManager()
 void ULexyVFXDMXFunctionManager::BeginPlay()
 {
 	Super::BeginPlay();
-
+	this->SetParentDMXRef();
+	Patch = DMXComp->GetFixturePatch();
 	// ...
 	
 }
@@ -34,5 +35,24 @@ void ULexyVFXDMXFunctionManager::TickComponent(float DeltaTime, ELevelTick TickT
 
 void ULexyVFXDMXFunctionManager::SetParentDMXRef()
 {
+	DMXComp = Cast<UDMXComponent>(this->GetOwner()->GetComponentByClass(UDMXComponent::StaticClass()));
+	if (DMXComp)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Found DMX Component: %s"), *this->GetOwner()->GetComponentByClass(UDMXComponent::StaticClass())->GetName());
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Couldn't find valid DMX Component on parent actor"));
+	}
+
+	Patch = DMXComp->GetFixturePatch();
+	if (Patch)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Found Fixture Patch on DMX Component: %s"), *Patch->Name);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Couldn't find valid DMX Patch on DMX Component"));
+	}
 }
 

@@ -163,10 +163,6 @@
 		{
 			"Name": "DMXFixtures",
 			"Enabled": true
-		},
-		{
-			"Name": "NDIIOPlugin",
-			"Enabled": true
 		}
 	]
 }

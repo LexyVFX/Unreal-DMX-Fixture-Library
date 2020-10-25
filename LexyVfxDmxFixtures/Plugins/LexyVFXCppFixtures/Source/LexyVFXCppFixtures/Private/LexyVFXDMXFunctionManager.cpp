@@ -32,3 +32,7 @@ void ULexyVFXDMXFunctionManager::TickComponent(float DeltaTime, ELevelTick TickT
 	// ...
 }
 
+void ULexyVFXDMXFunctionManager::SetParentDMXRef()
+{
+}
+

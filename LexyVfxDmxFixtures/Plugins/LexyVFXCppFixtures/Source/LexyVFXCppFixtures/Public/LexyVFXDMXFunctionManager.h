@@ -4,6 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "LexyVFXDMXBaseComponent.h"
+#include "DMXRuntime/Public/DMXSubsystem.h"
+#include "DMXRuntime/Public/Game/DMXComponent.h"
+#include "DMXRuntime/Public/Library/DMXEntity.h"
+#include "DMXRuntime/Public/Library/DMXEntityFixturePatch.h"
 #include "LexyVFXDMXFunctionManager.generated.h"
 
 
@@ -24,5 +29,15 @@ public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-		
+	UPROPERTY(Instanced, BlueprintReadWrite, EditAnywhere)
+	UDMXComponent *DMXComp;
+
+	UPROPERTY(Instanced, BlueprintReadWrite, EditAnywhere)
+	UDMXEntityFixturePatch *Patch;
+
+	UPROPERTY(Instanced, BlueprintReadWrite, EditAnywhere)
+	TArray<ULexyVFXDMXBaseComponent*> LexyVFXFunctionComponents;
+
+	UFUNCTION()
+	virtual void SetParentDMXRef();
 };

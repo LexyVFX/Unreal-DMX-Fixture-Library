@@ -12,6 +12,7 @@
 #include "DMXProtocol/Public/DMXProtocolTypes.h"
 #include "LexyVFXDMXFunctionManager.generated.h"
 
+DECLARE_DYNAMIC_DELEGATE_ThreeParams(FDMXReceivedDelegate, FDMXProtocolName, Protocol, int32, Universe, const TArray<uint8>&, DMXBuffer);
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class LEXYVFXCPPFIXTURES_API ULexyVFXDMXFunctionManager : public UActorComponent
@@ -29,6 +30,8 @@ protected:
 public:	
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+
+	FDMXReceivedDelegate ReceivedDMX;
 
 	UPROPERTY(Instanced, BlueprintReadWrite, EditAnywhere)
 	UDMXComponent *DMXComp;

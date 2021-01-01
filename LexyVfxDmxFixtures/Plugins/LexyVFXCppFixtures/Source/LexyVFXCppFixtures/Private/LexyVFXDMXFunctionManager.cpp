@@ -60,8 +60,6 @@ void ULexyVFXDMXFunctionManager::SetFunctionComponentReferences()
 
 void ULexyVFXDMXFunctionManager::ProcessDMX(FDMXProtocolName Protocol, int32 Universe, const TArray<uint8>& DMXBuffer)
 {
-	//UE_LOG(LogTemp, Warning, TEXT("Processing DMX..."));
-
 	TMap<FName, int32> NImapDMXFunctionValues;
 	TArray<FName> LocalKeys;
 	static UDMXSubsystem* UnrealDMXSubsystem = UDMXSubsystem::GetDMXSubsystem_Pure();

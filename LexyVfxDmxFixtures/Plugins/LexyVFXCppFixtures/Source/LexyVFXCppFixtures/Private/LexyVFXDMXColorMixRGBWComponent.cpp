@@ -7,7 +7,7 @@ void ULexyVFXDMXColorMixRGBWComponent::BeginPlay()
 {
 	Super::BeginPlay();
 	this->SetParentDMXRef();
-	this->InitDMXFunctionNames(TArray<FName>({ "colorr", "colorg", "colorb", "colorw" }));
+	this->InitDMXFunctionNames(TArray<FName>({ "Red", "Green", "Blue", "White" }));
 
 	SpotRef_Light = Cast<USpotLightComponent>(this->FindComponentsByName(USpotLightComponent::StaticClass(), TArray<FString>({ "spot" }))[0]);
 
@@ -20,11 +20,11 @@ void ULexyVFXDMXColorMixRGBWComponent::BeginPlay()
 	miLens = SMRef_Lens->CreateDynamicMaterialInstance(0, SMRef_Lens->GetMaterial(0));
 }
 
-void ULexyVFXDMXColorMixRGBWComponent::UpdateDMX(TMap<FName, int32> NImapDMXFunctionValues, TArray<FName> nDMXComponentFunctions)
+void ULexyVFXDMXColorMixRGBWComponent::UpdateDMX(TMap<FDMXAttributeName, int32> DImapDMXFunctionValues, TArray<FName> nDMXComponentFunctions)
 {
-	this->UpdateDMXMaterialVectorParameter(miBeam, colorMixRGBWBitDepth, FName("DMX Color"), NImapDMXFunctionValues, this->FunctionNames.nDMXComponentFunctions);
+	this->UpdateDMXMaterialVectorParameter(miBeam, colorMixRGBWBitDepth, FName("DMX Color"), DImapDMXFunctionValues, this->FunctionNames.nDMXComponentFunctions);
 
-	this->UpdateDMXMaterialVectorParameter(miLens, colorMixRGBWBitDepth, FName("DMX Color"), NImapDMXFunctionValues, this->FunctionNames.nDMXComponentFunctions);
+	this->UpdateDMXMaterialVectorParameter(miLens, colorMixRGBWBitDepth, FName("DMX Color"), DImapDMXFunctionValues, this->FunctionNames.nDMXComponentFunctions);
 
-	this->UpdateDMXLightColor(colorMixRGBWBitDepth, SpotRef_Light, 1.0f, NImapDMXFunctionValues, this->FunctionNames.nDMXComponentFunctions);
+	this->UpdateDMXLightColor(colorMixRGBWBitDepth, SpotRef_Light, 1.0f, DImapDMXFunctionValues, this->FunctionNames.nDMXComponentFunctions);
 }

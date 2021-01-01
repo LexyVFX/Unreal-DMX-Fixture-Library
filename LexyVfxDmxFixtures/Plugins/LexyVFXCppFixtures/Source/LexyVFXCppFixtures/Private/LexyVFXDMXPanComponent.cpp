@@ -7,12 +7,12 @@ void ULexyVFXDMXPanComponent::BeginPlay()
 {
 	Super::BeginPlay();
 	this->SetParentDMXRef();
-	this->InitDMXFunctionNames(TArray<FName>({ "pan" }));
+	this->InitDMXFunctionNames(TArray<FName>({ "Pan" }));
 
 	SMRef_Yoke = Cast<UStaticMeshComponent>(this->FindComponentsByName(UStaticMeshComponent::StaticClass(), TArray<FString>({ "yoke" }))[0]);
 }
 
-void ULexyVFXDMXPanComponent::UpdateDMX(TMap<FName, int32> NImapDMXFunctionValues, TArray<FName> nDMXComponentFunctions)
+void ULexyVFXDMXPanComponent::UpdateDMX(TMap<FDMXAttributeName, int32> DImapDMXFunctionValues, TArray<FName> nDMXComponentFunctions)
 {
-	this->UpdateDMXRotation(panBitDepth, SMRef_Yoke, EDMXRotationMode::RotationMode_Pan, fPanRange, NImapDMXFunctionValues, this->FunctionNames.nDMXComponentFunctions[0]);
+	this->UpdateDMXRotation(panBitDepth, SMRef_Yoke, EDMXRotationMode::RotationMode_Pan, fPanRange, DImapDMXFunctionValues, this->FunctionNames.nDMXComponentFunctions[0]);
 }

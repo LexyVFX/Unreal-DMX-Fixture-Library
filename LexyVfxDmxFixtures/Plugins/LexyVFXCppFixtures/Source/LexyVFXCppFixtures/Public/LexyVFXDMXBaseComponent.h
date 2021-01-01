@@ -73,26 +73,26 @@ public:
 		virtual TArray<UActorComponent*> FindComponentsByName(TSubclassOf<UActorComponent> ComponentType, TArray<FString> searchNames);
 
 	UFUNCTION(BlueprintCallable)
-		virtual void UpdateDMX(TMap<FName, int32> NImapDMXFunctionValues, TArray<FName> nDMXComponentFunctions);
+		virtual void UpdateDMX(TMap<FDMXAttributeName, int32> DImapDMXFunctionValues, TArray<FName> nDMXComponentFunctions);
 
 	UFUNCTION(BlueprintCallable)
-		virtual void UpdateDMXMaterialScalarParameter(UMaterialInstanceDynamic *miTargetMaterial, EDMXParameterBitDepth DMXBitDepth, FName nMaterialParameterName, float fScaleFactor, float fRangeMin, float fRangeMax, TMap<FName, int32> NImapDMXFunctionValues, FName nDMXComponentFunction);
+		virtual void UpdateDMXMaterialScalarParameter(UMaterialInstanceDynamic *miTargetMaterial, EDMXParameterBitDepth DMXBitDepth, FName nMaterialParameterName, float fScaleFactor, float fRangeMin, float fRangeMax, TMap<FDMXAttributeName, int32> DImapDMXFunctionValues, FName nDMXComponentFunction);
 
 	UFUNCTION(BlueprintCallable)
-		virtual void UpdateDMXMaterialVectorParameter(UMaterialInstanceDynamic *miTargetMaterial, EDMXParameterBitDepth DMXBitDepth, FName nMaterialParameterName, TMap<FName, int32> NImapDMXFunctionValues, TArray<FName> nDMXComponentFunctions);
+		virtual void UpdateDMXMaterialVectorParameter(UMaterialInstanceDynamic *miTargetMaterial, EDMXParameterBitDepth DMXBitDepth, FName nMaterialParameterName, TMap<FDMXAttributeName, int32> DImapDMXFunctionValues, TArray<FName> nDMXComponentFunctions);
 
 	UFUNCTION(BlueprintCallable)
-		virtual void UpdateDMXLightColor(EDMXParameterBitDepth DMXBitDepth, ULightComponent *LightComponentRef, float fRange, TMap<FName, int32> NImapDMXFunctionValues, TArray<FName> nDMXComponentFunctions);
+		virtual void UpdateDMXLightColor(EDMXParameterBitDepth DMXBitDepth, ULightComponent *LightComponentRef, float fRange, TMap<FDMXAttributeName, int32> DImapDMXFunctionValues, TArray<FName> nDMXComponentFunctions);
 
 	UFUNCTION(BlueprintCallable)
-		virtual void UpdateDMXSpringArm(EDMXParameterBitDepth DMXBitDepth, USpringArmComponent *SpringArmComponentRef, float fRange, TMap<FName, int32> NImapDMXFunctionValues, FName nDMXComponentFunction);
+		virtual void UpdateDMXSpringArm(EDMXParameterBitDepth DMXBitDepth, USpringArmComponent *SpringArmComponentRef, float fRange, TMap<FDMXAttributeName, int32> DImapDMXFunctionValues, FName nDMXComponentFunction);
 
 	UFUNCTION(BlueprintCallable)
-		virtual bool UpdateDMXSpotConeAngle(EDMXParameterBitDepth DMXBitDepth, ULightComponent *LightComponentRef, float fBeamRangeMax, float fBeamRangeMin, TMap<FName, int32> NImapDMXFunctionValues, FName nDMXComponentFunction);
+		virtual bool UpdateDMXSpotConeAngle(EDMXParameterBitDepth DMXBitDepth, ULightComponent *LightComponentRef, float fBeamRangeMax, float fBeamRangeMin, TMap<FDMXAttributeName, int32> DImapDMXFunctionValues, FName nDMXComponentFunction);
 
 	UFUNCTION(BlueprintCallable)
-		virtual void UpdateDMXLightIntensity(EDMXParameterBitDepth DMXBitDepth, ULightComponent *LightComponentRef, float fRange, TMap<FName, int32> NImapDMXFunctionValues, FName nDMXComponentFunction);
+		virtual void UpdateDMXLightIntensity(EDMXParameterBitDepth DMXBitDepth, ULightComponent *LightComponentRef, float fRange, TMap<FDMXAttributeName, int32> DImapDMXFunctionValues, FName nDMXComponentFunction);
 
 	UFUNCTION(BlueprintCallable)
-		virtual bool UpdateDMXRotation(EDMXParameterBitDepth DMXBitDepth, USceneComponent *SceneComponentRef, EDMXRotationMode eRotationMode, float fRange, TMap<FName, int32> NImapDMXFunctionValues, FName nDMXComponentFunction);
+		virtual bool UpdateDMXRotation(EDMXParameterBitDepth DMXBitDepth, USceneComponent *SceneComponentRef, EDMXRotationMode eRotationMode, float fRange, TMap<FDMXAttributeName, int32> DImapDMXFunctionValues, FName nDMXComponentFunction);
 };

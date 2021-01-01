@@ -7,7 +7,7 @@ void ULexyVFXDMXDimmerComponent::BeginPlay()
 {
 	Super::BeginPlay();
 	this->SetParentDMXRef();
-	this->InitDMXFunctionNames(TArray<FName>({ "dimmer" }));
+	this->InitDMXFunctionNames(TArray<FName>({ "Dimmer" }));
 
 	SpotRef_Light = Cast<USpotLightComponent>(this->FindComponentsByName(USpotLightComponent::StaticClass(), TArray<FString>({ "spot" }))[0]);
 
@@ -20,11 +20,11 @@ void ULexyVFXDMXDimmerComponent::BeginPlay()
 	miLens = SMRef_Lens->CreateDynamicMaterialInstance(0, SMRef_Lens->GetMaterial(0));
 }
 
-void ULexyVFXDMXDimmerComponent::UpdateDMX(TMap<FName, int32> NImapDMXFunctionValues, TArray<FName> nDMXComponentFunctions)
+void ULexyVFXDMXDimmerComponent::UpdateDMX(TMap<FDMXAttributeName, int32> DImapDMXFunctionValues, TArray<FName> nDMXComponentFunctions)
 {
-	this->UpdateDMXMaterialScalarParameter(miBeam, dimmerBitDepth, FName("DMX Dimmer"), 1.0f, 0.0f, 1.0f, NImapDMXFunctionValues, this->FunctionNames.nDMXComponentFunctions[0]);
+	this->UpdateDMXMaterialScalarParameter(miBeam, dimmerBitDepth, FName("DMX Dimmer"), 1.0f, 0.0f, 1.0f, DImapDMXFunctionValues, this->FunctionNames.nDMXComponentFunctions[0]);
 
-	this->UpdateDMXMaterialScalarParameter(miLens, dimmerBitDepth, FName("DMX Dimmer"), 1.0f, 0.0f, 1.0f, NImapDMXFunctionValues, this->FunctionNames.nDMXComponentFunctions[0]);
+	this->UpdateDMXMaterialScalarParameter(miLens, dimmerBitDepth, FName("DMX Dimmer"), 1.0f, 0.0f, 1.0f, DImapDMXFunctionValues, this->FunctionNames.nDMXComponentFunctions[0]);
 
-	this->UpdateDMXLightIntensity(dimmerBitDepth, SpotRef_Light, fLightIntensity, NImapDMXFunctionValues, this->FunctionNames.nDMXComponentFunctions[0]);
+	this->UpdateDMXLightIntensity(dimmerBitDepth, SpotRef_Light, fLightIntensity, DImapDMXFunctionValues, this->FunctionNames.nDMXComponentFunctions[0]);
 }

@@ -17,7 +17,7 @@ class LEXYVFXCPPFIXTURES_API ULexyVFXDMXDimmerComponent : public ULexyVFXDMXBase
 protected:
 	void BeginPlay() override;
 public:
-	void UpdateDMX(TMap<FName, int32> NImapDMXFunctionValues, TArray<FName> nDMXComponentFunctions) override;
+	void UpdateDMX(TMap<FDMXAttributeName, int32> DImapDMXFunctionValues, TArray<FName> nDMXComponentFunctions) override;
 
 	UPROPERTY(EditAnywhere)
 	UStaticMeshComponent *SMRef_Beam;

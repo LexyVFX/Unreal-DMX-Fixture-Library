@@ -46,5 +46,8 @@ public:
 	virtual void SetParentDMXRef();
 
 	UFUNCTION()
-	void ReceivedDMX(FDMXProtocolName Protocol, int32 Universe, const TArray<uint8>& DMXBuffer);
+	void SetFunctionComponentReferences();
+
+	UFUNCTION()
+	void ProcessDMX(FDMXProtocolName Protocol, int32 Universe, const TArray<uint8>& DMXBuffer);
 };

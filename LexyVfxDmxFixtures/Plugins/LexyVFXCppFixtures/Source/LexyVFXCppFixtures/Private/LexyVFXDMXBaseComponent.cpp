@@ -67,7 +67,8 @@ void ULexyVFXDMXBaseComponent::InitDMXFunctionNames(TArray<FName> DMXFunctionNam
 
 TArray<UActorComponent*> ULexyVFXDMXBaseComponent::FindComponentsByName(TSubclassOf<UActorComponent> ComponentType, TArray<FString> searchNames)
 {
-	TArray<UActorComponent*> actorComponents = this->GetOwner()->GetComponentsByClass(ComponentType);
+	TArray<UActorComponent*> actorComponents;
+	this->GetOwner()->GetComponents(ComponentType, actorComponents);
 
 	//TInlineComponentArray<UActorComponent*> actorComponents;
 	//this->GetOwner()->GetComponents(actorComponents, false);

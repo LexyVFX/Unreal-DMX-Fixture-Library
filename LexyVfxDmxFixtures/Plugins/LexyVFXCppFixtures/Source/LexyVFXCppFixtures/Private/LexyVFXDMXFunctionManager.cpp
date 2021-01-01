@@ -22,7 +22,9 @@ void ULexyVFXDMXFunctionManager::BeginPlay()
 	SetFunctionComponentReferences();
 	static UDMXSubsystem* UnrealDMXSubsystem = UDMXSubsystem::GetDMXSubsystem_Pure();
 	ReceivedDMX.BindUFunction(this, "ProcessDMX");
-	UnrealDMXSubsystem->OnProtocolReceived.Add(ULexyVFXDMXFunctionManager::ReceivedDMX);
+
+	// Using OnProtocolReceived_Deprecated until the DMXComponent's OnPatchReceived is made Public in 4.26.1
+	UnrealDMXSubsystem->OnProtocolReceived_DEPRECATED.Add(ULexyVFXDMXFunctionManager::ReceivedDMX);
 	// ...
 	
 }
@@ -61,13 +63,14 @@ void ULexyVFXDMXFunctionManager::SetFunctionComponentReferences()
 void ULexyVFXDMXFunctionManager::ProcessDMX(FDMXProtocolName Protocol, int32 Universe, const TArray<uint8>& DMXBuffer)
 {
 	TMap<FName, int32> NImapDMXFunctionValues;
+	TMap<FDMXAttributeName, int32> DImapDMXFunctionValues;
 	TArray<FName> LocalKeys;
 	static UDMXSubsystem* UnrealDMXSubsystem = UDMXSubsystem::GetDMXSubsystem_Pure();
-	UnrealDMXSubsystem->GetFunctionsMap(Patch, Protocol, NImapDMXFunctionValues);
+	UnrealDMXSubsystem->GetFunctionsMap(Patch, DImapDMXFunctionValues);
 	NImapDMXFunctionValues.GetKeys(LocalKeys);
 
 	for (ULexyVFXDMXBaseComponent* functionComponent : LexyVFXFunctionComponents)
 	{
-		functionComponent->UpdateDMX(NImapDMXFunctionValues, LocalKeys);
+		functionComponent->UpdateDMX(DImapDMXFunctionValues, LocalKeys);
 	}
 }

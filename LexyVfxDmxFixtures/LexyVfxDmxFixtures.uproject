@@ -1,6 +1,6 @@
 {
 	"FileVersion": 3,
-	"EngineAssociation": "4.25",
+	"EngineAssociation": "4.26",
 	"Category": "",
 	"Description": "",
 	"Modules": [
@@ -37,8 +37,7 @@
 			"SupportedTargetPlatforms": [
 				"Win32",
 				"Win64",
-				"Linux",
-				"Mac"
+				"Linux"
 			]
 		},
 		{
@@ -130,14 +129,18 @@
 			"Name": "AppleARKit",
 			"Enabled": true,
 			"SupportedTargetPlatforms": [
-				"IOS"
+				"IOS",
+				"Win64",
+				"Mac"
 			]
 		},
 		{
 			"Name": "AppleARKitFaceSupport",
 			"Enabled": true,
 			"SupportedTargetPlatforms": [
-				"IOS"
+				"IOS",
+				"Win64",
+				"Mac"
 			]
 		},
 		{

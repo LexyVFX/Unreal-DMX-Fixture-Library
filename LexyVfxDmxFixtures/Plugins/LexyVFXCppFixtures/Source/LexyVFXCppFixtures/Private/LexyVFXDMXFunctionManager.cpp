@@ -19,7 +19,10 @@ void ULexyVFXDMXFunctionManager::BeginPlay()
 {
 	Super::BeginPlay();
 	this->SetParentDMXRef();
-	Patch = DMXComp->GetFixturePatch();
+	SetFunctionComponentReferences();
+	static UDMXSubsystem* UnrealDMXSubsystem = UDMXSubsystem::GetDMXSubsystem_Pure();
+	ReceivedDMX.BindUFunction(this, "ProcessDMX");
+	UnrealDMXSubsystem->OnProtocolReceived.Add(ULexyVFXDMXFunctionManager::ReceivedDMX);
 	// ...
 	
 }
@@ -43,9 +46,30 @@ void ULexyVFXDMXFunctionManager::SetParentDMXRef()
 		UE_LOG(LogTemp, Warning, TEXT("Couldn't find valid DMX Patch on DMX Component"));
 }
 
+void ULexyVFXDMXFunctionManager::SetFunctionComponentReferences()
+{
+	TArray<UActorComponent*> actorComponents = this->GetOwner()->GetComponentsByClass(ULexyVFXDMXBaseComponent::StaticClass());
+	LexyVFXFunctionComponents.Empty();
+	for (UActorComponent* actorcomponent : actorComponents)
+	{
+		ULexyVFXDMXBaseComponent* localcomp = Cast<ULexyVFXDMXBaseComponent>(actorcomponent);
+		if (localcomp->IsValidLowLevel())
+			LexyVFXFunctionComponents.AddUnique(localcomp);
 	}
 }
 
-void ULexyVFXDMXFunctionManager::ReceivedDMX(FDMXProtocolName Protocol, int32 Universe, const TArray<uint8>& DMXBuffer)
+void ULexyVFXDMXFunctionManager::ProcessDMX(FDMXProtocolName Protocol, int32 Universe, const TArray<uint8>& DMXBuffer)
 {
+	//UE_LOG(LogTemp, Warning, TEXT("Processing DMX..."));
+
+	TMap<FName, int32> NImapDMXFunctionValues;
+	TArray<FName> LocalKeys;
+	static UDMXSubsystem* UnrealDMXSubsystem = UDMXSubsystem::GetDMXSubsystem_Pure();
+	UnrealDMXSubsystem->GetFunctionsMap(Patch, Protocol, NImapDMXFunctionValues);
+	NImapDMXFunctionValues.GetKeys(LocalKeys);
+
+	for (ULexyVFXDMXBaseComponent* functionComponent : LexyVFXFunctionComponents)
+	{
+		functionComponent->UpdateDMX(NImapDMXFunctionValues, LocalKeys);
+	}
 }

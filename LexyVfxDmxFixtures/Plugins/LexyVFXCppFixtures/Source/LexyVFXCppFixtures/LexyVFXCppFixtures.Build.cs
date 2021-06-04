@@ -25,9 +25,7 @@ public class LexyVFXCppFixtures : ModuleRules
 		PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
-				"Core",
-                "DMXRuntime",
-                "DMXProtocol",
+				"Core"
 				// ... add other public dependencies that you statically link with here ...
 			}
 			);
@@ -40,6 +38,8 @@ public class LexyVFXCppFixtures : ModuleRules
 				"Engine",
 				"Slate",
 				"SlateCore",
+				"DMXRuntime",
+				"DMXProtocol"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

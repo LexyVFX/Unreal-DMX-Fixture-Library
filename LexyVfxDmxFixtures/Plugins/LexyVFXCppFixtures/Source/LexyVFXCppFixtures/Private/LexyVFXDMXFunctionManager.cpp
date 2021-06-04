@@ -23,8 +23,9 @@ void ULexyVFXDMXFunctionManager::BeginPlay()
 	static UDMXSubsystem* UnrealDMXSubsystem = UDMXSubsystem::GetDMXSubsystem_Pure();
 	ReceivedDMX.BindUFunction(this, "ProcessDMX");
 
-	// Using OnProtocolReceived_Deprecated until the DMXComponent's OnPatchReceived is made Public in 4.26.1
+	// Using OnProtocolReceived_Deprecated until the DMXComponent's OnPatchReceived is made Public in 4.27
 	UnrealDMXSubsystem->OnProtocolReceived_DEPRECATED.Add(ULexyVFXDMXFunctionManager::ReceivedDMX);
+	
 	// ...
 	
 }

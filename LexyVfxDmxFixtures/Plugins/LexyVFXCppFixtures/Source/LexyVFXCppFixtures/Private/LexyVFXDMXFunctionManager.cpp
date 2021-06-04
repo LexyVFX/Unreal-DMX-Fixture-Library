@@ -51,13 +51,15 @@ void ULexyVFXDMXFunctionManager::SetParentDMXRef()
 
 void ULexyVFXDMXFunctionManager::SetFunctionComponentReferences()
 {
-	TArray<UActorComponent*> actorComponents = this->GetOwner()->GetComponentsByClass(ULexyVFXDMXBaseComponent::StaticClass());
+	TArray<UActorComponent*> ActorComponents;
+	this->GetOwner()->GetComponents(ULexyVFXDMXBaseComponent::StaticClass(), ActorComponents, false);
+
 	LexyVFXFunctionComponents.Empty();
-	for (UActorComponent* actorcomponent : actorComponents)
+	for (UActorComponent* ActorComponent : ActorComponents)
 	{
-		ULexyVFXDMXBaseComponent* localcomp = Cast<ULexyVFXDMXBaseComponent>(actorcomponent);
-		if (localcomp->IsValidLowLevel())
-			LexyVFXFunctionComponents.AddUnique(localcomp);
+		ULexyVFXDMXBaseComponent* LocalComp = Cast<ULexyVFXDMXBaseComponent>(ActorComponent);
+		if (LocalComp->IsValidLowLevel())
+			LexyVFXFunctionComponents.AddUnique(LocalComp);
 	}
 }
 
@@ -70,8 +72,8 @@ void ULexyVFXDMXFunctionManager::ProcessDMX(FDMXProtocolName Protocol, int32 Uni
 	UnrealDMXSubsystem->GetFunctionsMap(Patch, DImapDMXFunctionValues);
 	NImapDMXFunctionValues.GetKeys(LocalKeys);
 
-	for (ULexyVFXDMXBaseComponent* functionComponent : LexyVFXFunctionComponents)
+	for (ULexyVFXDMXBaseComponent* FunctionComponent : LexyVFXFunctionComponents)
 	{
-		functionComponent->UpdateDMX(DImapDMXFunctionValues, LocalKeys);
+		FunctionComponent->UpdateDMX(DImapDMXFunctionValues, LocalKeys);
 	}
 }

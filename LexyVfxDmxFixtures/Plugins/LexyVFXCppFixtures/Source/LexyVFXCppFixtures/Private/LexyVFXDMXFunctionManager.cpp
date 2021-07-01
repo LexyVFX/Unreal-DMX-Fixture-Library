@@ -24,7 +24,10 @@ void ULexyVFXDMXFunctionManager::BeginPlay()
 	ReceivedDMX.BindUFunction(this, "ProcessDMX");
 
 	// Using OnProtocolReceived_Deprecated until the DMXComponent's OnPatchReceived is made Public in 4.27
-	UnrealDMXSubsystem->OnProtocolReceived_DEPRECATED.Add(ULexyVFXDMXFunctionManager::ReceivedDMX);
+	//UnrealDMXSubsystem->OnProtocolReceived_DEPRECATED.Add(ULexyVFXDMXFunctionManager::ReceivedDMX);
+	
+	//Switching to OnFixturePatchReceived pending it being made public
+	DMXComp->OnFixturePatchReceived.Add(ULexyVFXDMXFunctionManager::ReceivedDMX);
 	
 	// ...
 	
